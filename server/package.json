@@ -1,0 +1,10 @@
+{
+  "name": "gc-api",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express-session": "^1.18.1",
+    "pg": "^8.13.1"
+  }
+}

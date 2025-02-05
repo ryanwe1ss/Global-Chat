@@ -1,12 +1,30 @@
+import { useEffect } from 'react';
 import {
   Box,
   TextField,
   Button,
 
 } from '@mui/material';
+import { HttpRequest } from '../services/http-service';
 
-function MessageBox()
+function MessageBox(args)
 {
+  useEffect(() => {
+    if (args.user.username) {
+      HttpRequest('/api/messages').then(response => {
+        console.log(response);
+
+        args.setLogin({
+          username: null,
+          password: null,
+          loading: false,
+          open: false,
+        });
+      });
+    }
+
+  }, [args.user]);
+
   return (
     <Box
       sx={{
