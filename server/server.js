@@ -1,4 +1,6 @@
+const { middleware } = require('./middleware/middleware');
 const { database } = require('./database');
+const listener = require('./listener');
 
 const crypto = require('crypto');
 const express = require('express');
@@ -25,7 +27,8 @@ api.use(function(request, result, next) {
 });
 
 api.post('/api/session', function(request, result) {
-  switch (request.session.user) {
+  switch (request.session.user)
+  {
     case undefined:
       return result.json({
         success: false,
@@ -59,15 +62,21 @@ api.post('/api/login', function(request, result) {
 
   database.query(`
     SELECT
-      id,
-      username,
-      name,
-      date_created
+      u.id,
+      u.name,
+      u.username,
+      u.date_created,
+      json_build_object(
+        'id', r.id,
+        'name', r.name
+      ) AS role
     FROM
-      users
+      users u
+    LEFT JOIN
+      roles r ON r.id = u.role_id
     WHERE
-      username = $1 AND
-      password = $2
+      u.username = $1 AND
+      u.password = $2
   `,
     [
       request.body.username,
@@ -86,6 +95,7 @@ api.post('/api/login', function(request, result) {
       request.session.user = {
         id: results.rows[0].id,
         name: results.rows[0].name,
+        role: results.rows[0].role.name,
         username: request.body.username,
         date_created: results.rows[0].date_created,
       
@@ -97,6 +107,7 @@ api.post('/api/login', function(request, result) {
         session: {
           username: request.body.username,
           name: results.rows[0].name,
+          role: results.rows[0].role.name,
           date_created: results.rows[0].date_created,
         },
       });
@@ -111,25 +122,32 @@ api.post('/api/login', function(request, result) {
   });
 });
 
-api.post('/api/messages', function(request, result) {
+api.post('/api/messages', middleware, function(request, result) {
   database.query(`
-    SELECT
-      m.id,
-      m.message,
-      m.date_created,
-      json_build_object(
-            'id', u.id,
-            'name', u.name,
-            'username', u.username
+    SELECT * FROM (
+      SELECT
+        m.message,
+        m.date_created,
+        u.username = $1 AS your_message,
+        json_build_object(
+          'name', u.name,
+          'username', u.username
         ) AS sender
-    FROM
-      messages m
-    LEFT JOIN
-      users u ON u.id = m.sender_id
-    WHERE
-      m.is_deleted IS FALSE
-    LIMIT 10
+      FROM
+        messages m
+      LEFT JOIN
+        users u ON u.id = m.sender_id
+      WHERE
+        m.is_deleted IS FALSE
+      ORDER BY
+        m.id DESC
+      LIMIT 10
+    ) AS subquery
+    ORDER BY date_created ASC
   `,
+  [
+    request.session.user.username,
+  ],
 
   (error, results) => {
     if (error) {
@@ -143,6 +161,40 @@ api.post('/api/messages', function(request, result) {
       success: true,
       messages: results.rows,
     });
+  });
+});
+
+api.post('/api/send-message', (request, result) => {
+  const message = request.body.message || null;
+
+  if (message) {
+    const dateStamp = new Date().toISOString();
+
+    database.query(`
+      INSERT INTO messages 
+      (sender_id, message, date_created)
+      VALUES
+      ($1, $2, $3)
+    `,
+    [
+      request.session.user.id,
+      message,
+      dateStamp,
+    ]);
+
+    listener.create_message({
+      sender: {
+        username: request.session.user.username,
+        name: request.session.user.name,
+      },
+      date_created: dateStamp,
+      message,
+    });
+  }
+
+  return result.json({
+    success: message !== null,
+    message: (!message) ? 'Failed Receiving Message' : 'Message Received',
   });
 });
 

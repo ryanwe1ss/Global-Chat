@@ -18,10 +18,10 @@ import ClientView from './components/connections';
 
 function App()
 {
+  const [receivedMessage, setReceivedMessage] = useState(null);
   const passwordRef = useRef(null);
 
   const [user, setUser] = useState({
-    token: null,
     username: null,
     name: null,
     date_created: null,
@@ -31,7 +31,7 @@ function App()
     username: null,
     password: null,
     loading: false,
-    open: true,
+    open: false,
   });
 
   const [alert, setAlert] = useState({
@@ -41,8 +41,35 @@ function App()
   });
 
   useEffect(() => {
+    if (user.username) {
+      const socket = new WebSocket('ws://localhost:10000');
+
+      socket.addEventListener('message', (event) => {
+        const data = JSON.parse(event.data);
+        setReceivedMessage({
+          ...data,
+          your_message: data.sender.username === user.username,
+        });
+      });
+
+      socket.addEventListener('close', () => {
+        setUser({ username: null, name: null, date_created: null });
+        setLogin({ ...login, open: true });
+      });
+    }
+
+  }, [user]);
+
+  useEffect(() => {
     HttpRequest('/api/session').then(response => {
-      console.log(response);
+      if (response.session) {
+        setUser({
+          username: response.session.username,
+          name: response.session.name,
+          date_created: response.session.date_created,
+        });
+      
+      } else setLogin({ ...login, open: true });
     });
 
   }, []);
@@ -84,7 +111,7 @@ function App()
 
   return (
     <>
-      <MessageBox user={user} setLogin={setLogin} />
+      <MessageBox user={user} receivedMessage={receivedMessage} setLogin={setLogin} />
       <ClientView />
 
       <Modal
