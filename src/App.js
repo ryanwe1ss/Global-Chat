@@ -19,12 +19,13 @@ import ClientView from './components/connections';
 function App()
 {
   const [receivedMessage, setReceivedMessage] = useState(null);
+  const [users, setUsers] = useState([]);
   const passwordRef = useRef(null);
 
   const [user, setUser] = useState({
+    date_created: null,
     username: null,
     name: null,
-    date_created: null,
   });
 
   const [login, setLogin] = useState({
@@ -43,18 +44,34 @@ function App()
   useEffect(() => {
     if (user.username) {
       const socket = new WebSocket('ws://localhost:10000');
+      
+      socket.onopen = () => {
+        socket.send(JSON.stringify({ type: 'set_username', username: user.username }));
+      };
 
       socket.addEventListener('message', (event) => {
         const data = JSON.parse(event.data);
-        setReceivedMessage({
-          ...data,
-          your_message: data.sender.username === user.username,
-        });
+
+        switch (data.type)
+        {
+          case 'users':
+            setUsers(data.clients.filter(username => username !== user.username));
+            break;
+
+          case 'message':
+            setReceivedMessage({
+              your_message: data.body.sender.username === user.username,
+              ...data.body,
+            });
+            break;
+        }
       });
 
       socket.addEventListener('close', () => {
+        setLogin({ username: null, password: null, loading: false, open: true });
         setUser({ username: null, name: null, date_created: null });
-        setLogin({ ...login, open: true });
+        setAlert({ ...alert, open: false });
+        setUsers([]);
       });
     }
 
@@ -62,7 +79,9 @@ function App()
 
   useEffect(() => {
     HttpRequest('/api/session').then(response => {
+
       if (response.session) {
+        setUsers(response.users.filter(username => username !== response.session.username));
         setUser({
           username: response.session.username,
           name: response.session.name,
@@ -82,7 +101,6 @@ function App()
 
     setLogin({ ...login, loading: true });
     const response = await HttpRequest('/api/login', body);
-
     switch (response.token)
     {
       case null:
@@ -90,12 +108,13 @@ function App()
         break;
 
       default:
+        setUsers(response.users.filter(username => username !== body.username));
         setUser({
           username: response.session?.username,
           name: response.session?.name,
           date_created: response.session?.date_created,
         });
-        break
+        break;
     }
 
     setLogin({ ...login, loading: false });
@@ -112,7 +131,7 @@ function App()
   return (
     <>
       <MessageBox user={user} receivedMessage={receivedMessage} setLogin={setLogin} />
-      <ClientView />
+      <ClientView users={users} />
 
       <Modal
         open={login.open}
@@ -159,7 +178,7 @@ function App()
           />
 
           <Button
-            disabled={login.loading}
+            disabled={login.loading || !login.username || !login.password}
             onClick={handleLogin}
             variant='contained'
             color='primary'

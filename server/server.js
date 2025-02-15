@@ -5,7 +5,9 @@ const listener = require('./listener');
 const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
+
 const api = express();
+const usersConnected = [];
 
 api.use(express.json());
 api.use(session({
@@ -38,6 +40,7 @@ api.post('/api/session', function(request, result) {
     default:
       return result.json({
         success: true,
+        users: usersConnected,
         session: {
           username: request.session.user.username,
           name: request.session.user.name,
@@ -98,12 +101,15 @@ api.post('/api/login', function(request, result) {
         role: results.rows[0].role.name,
         username: request.body.username,
         date_created: results.rows[0].date_created,
+      };
       
-      }; request.session.save();
+      request.session.save();
+      usersConnected.push(request.body.username);
 
       return result.json({
         success: true,
         message: 'Authenticating...',
+        users: usersConnected,
         session: {
           username: request.body.username,
           name: results.rows[0].name,
@@ -123,9 +129,14 @@ api.post('/api/login', function(request, result) {
 });
 
 api.post('/api/messages', middleware, function(request, result) {
+  const limit = request.body.limit || 10;
   database.query(`
-    SELECT * FROM (
+    SELECT 
+      (SELECT COUNT(*) FROM messages WHERE is_deleted IS FALSE) AS count,
+      json_agg(subquery) AS messages
+    FROM (
       SELECT
+        m.id,
         m.message,
         m.date_created,
         u.username = $1 AS your_message,
@@ -133,20 +144,16 @@ api.post('/api/messages', middleware, function(request, result) {
           'name', u.name,
           'username', u.username
         ) AS sender
-      FROM
-        messages m
-      LEFT JOIN
-        users u ON u.id = m.sender_id
-      WHERE
-        m.is_deleted IS FALSE
-      ORDER BY
-        m.id DESC
-      LIMIT 10
+      FROM messages m
+      LEFT JOIN users u ON u.id = m.sender_id
+      WHERE m.is_deleted IS FALSE
+      ORDER BY m.id DESC
+      LIMIT $2
     ) AS subquery
-    ORDER BY date_created ASC
   `,
   [
     request.session.user.username,
+    limit,
   ],
 
   (error, results) => {
@@ -159,7 +166,7 @@ api.post('/api/messages', middleware, function(request, result) {
 
     return result.json({
       success: true,
-      messages: results.rows,
+      data: results.rows[0],
     });
   });
 });
@@ -169,7 +176,6 @@ api.post('/api/send-message', (request, result) => {
 
   if (message) {
     const dateStamp = new Date().toISOString();
-
     database.query(`
       INSERT INTO messages 
       (sender_id, message, date_created)
