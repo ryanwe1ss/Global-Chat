@@ -4,8 +4,13 @@ import {
   TextField,
   Button,
   Typography,
+  Alert,
 
 } from '@mui/material';
+import {
+  FileUpload as FileUploadIcon,
+
+} from '@mui/icons-material';
 
 import {
   HttpRequest,
@@ -15,15 +20,28 @@ import {
 function MessageBox(args)
 {
   const [message, setMessage] = useState(null);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(50);
   
   const [isAtTop, setIsAtTop] = useState(false);
+  const hasScrolledInitially = useRef(false);
   const messageContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   const [data, setData] = useState({
     messages: [],
     count: 0,
+  });
+
+  const [messageAction, setMessageSendAction] = useState({
+    buttonEnabled: true,
+    boxEnabled: true,
+    text: 'Send',
+  });
+
+  const [alert, setAlert] = useState({
+    severity: 'error',
+    message: null,
+    open: false,
   });
 
   useEffect(() => {
@@ -33,7 +51,7 @@ function MessageBox(args)
 
         setData({
           messages: response.data.messages || [],
-          count: response.count,
+          count: parseInt(response.data.count),
         });
 
         args.setLogin({
@@ -67,18 +85,47 @@ function MessageBox(args)
 
   }, [data.messages]);
 
+  useEffect(() => {
+    if (!hasScrolledInitially.current && messagesEndRef.current && data.messages.length > 0) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      hasScrolledInitially.current = true;
+    }
+    
+  }, [data.messages]);
+
   const handleSendMessage = async () => {
+    setAlert({ ...alert, open: false });
+    setMessageSendAction({
+      buttonEnabled: false,
+      boxEnabled: false,
+      text: 'Sending...',
+    });
+
     const response = await HttpRequest('/api/send-message', { message });
+    if (!response.success) {
+      setAlert({
+        message: response.message,
+        severity: 'error',
+        open: true,
+      });
+    }
+
     setMessage(null);
+    setMessageSendAction({
+      buttonEnabled: true,
+      boxEnabled: true,
+      text: 'Send',
+    });
   };
 
   const handleScroll = () => {
     if (messageContainerRef.current) {
       const { scrollTop } = messageContainerRef.current;
       
-      if (scrollTop === 0 && !isAtTop) {
+      if (scrollTop === 0 && !isAtTop && data.count !== data.messages.length) {
+        setLimit(limit + 50);
         setIsAtTop(true);
-        setLimit(limit + 25);
+        
       } else if (scrollTop > 0 && isAtTop) {
         setIsAtTop(false);
       }
@@ -150,6 +197,12 @@ function MessageBox(args)
         <div ref={messagesEndRef} />
       </Box>
 
+      {alert.open && (
+        <Alert severity={alert.severity}>
+          {alert.message}
+        </Alert>
+      )}
+
       <Box
         sx={{
           display: 'flex',
@@ -161,6 +214,7 @@ function MessageBox(args)
       >
         <TextField
           onChange={(event) => setMessage(event.target.value)}
+          disabled={!messageAction.boxEnabled}
           placeholder='Type a message...'
           value={message || ''}
           variant='outlined'
@@ -169,13 +223,23 @@ function MessageBox(args)
         />
         
         <Button
-          disabled={!message}
+          disabled={!message || !messageAction.buttonEnabled}
           onClick={handleSendMessage}
           variant='contained'
           color='primary'
           sx={{ ml: 2 }}
         >
-          Send
+          {messageAction.text}
+        </Button>
+
+        <Button
+          disabled={!messageAction.buttonEnabled}
+          onClick={() => args.openFileUpload(true)}
+          variant='outlined'
+          color='primary'
+          sx={{ ml: 1 }}
+        >
+          <FileUploadIcon />
         </Button>
       </Box>
     </Box>

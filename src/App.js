@@ -10,15 +10,18 @@ import {
 
 import {
   HttpRequest,
+  SocketURL,
 }
 from './services/http-service';
 
+import FileUploadModal from './components/modals/file-upload-modal';
 import MessageBox from './components/message-box';
 import ClientView from './components/connections';
 
 function App()
 {
   const [receivedMessage, setReceivedMessage] = useState(null);
+  const [fileUploadModal, openFileUpload] = useState(false);
   const [users, setUsers] = useState([]);
   const passwordRef = useRef(null);
 
@@ -43,7 +46,7 @@ function App()
 
   useEffect(() => {
     if (user.username) {
-      const socket = new WebSocket('ws://localhost:10000');
+      const socket = new WebSocket(SocketURL);
       
       socket.onopen = () => {
         socket.send(JSON.stringify({ type: 'set_username', username: user.username }));
@@ -79,7 +82,6 @@ function App()
 
   useEffect(() => {
     HttpRequest('/api/session').then(response => {
-
       if (response.session) {
         setUsers(response.users.filter(username => username !== response.session.username));
         setUser({
@@ -101,6 +103,7 @@ function App()
 
     setLogin({ ...login, loading: true });
     const response = await HttpRequest('/api/login', body);
+
     switch (response.token)
     {
       case null:
@@ -130,7 +133,8 @@ function App()
 
   return (
     <>
-      <MessageBox user={user} receivedMessage={receivedMessage} setLogin={setLogin} />
+      <MessageBox user={user} receivedMessage={receivedMessage} setLogin={setLogin} openFileUpload={openFileUpload} />
+      <FileUploadModal open={fileUploadModal} />
       <ClientView users={users} />
 
       <Modal

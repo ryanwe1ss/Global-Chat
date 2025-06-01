@@ -56,7 +56,7 @@ httpServer.on('upgrade', (request, socket, head) => {
   });
 });
 
-httpServer.listen(process.env.MESSAGE_LISTENER_PORT);
+httpServer.listen(process.env.WS_PORT);
 module.exports = {
   create_message,
 };

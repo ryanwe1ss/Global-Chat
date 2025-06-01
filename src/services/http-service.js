@@ -1,4 +1,8 @@
-export const absoluteURL = process.env.BACKEND_SERVER;
+export const ServerURL = `${process.env.PROTOCOL}://${window.location.hostname}${process.env.PROTOCOL == 'http' ? `:${process.env.API_PORT}` : ''}`;
+export const SocketURL = 
+  `${process.env.PROTOCOL == 'https' ? 'wss' : 'ws'}://` +
+  `${window.location.hostname}${process.env.PROTOCOL == 'http' ? `:${process.env.WS_PORT}` : ''}`;
+
 export const defaultHeaders = {
   'Content-Type': 'application/json',
 };
@@ -9,7 +13,7 @@ export function HttpRequest(route, body, extendedHeaders = {}) {
     ...extendedHeaders,
   };
 
-  return fetch(absoluteURL + route, {
+  return fetch(`${ServerURL}${route}`, {
     method: 'POST',
     headers: headers,
     credentials: 'include',

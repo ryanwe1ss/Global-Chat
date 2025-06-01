@@ -5,11 +5,16 @@ const listener = require('./listener');
 const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
+const cors = require('cors');
 
 const api = express();
 const usersConnected = [];
 
 api.use(express.json());
+api.use(cors({
+  origin: process.env.ORIGIN,
+  credentials: true,
+}));
 api.use(session({
   resave: true,
   saveUninitialized: true,
@@ -18,15 +23,6 @@ api.use(session({
     maxAge: 3600000,
   },
 }));
-
-api.use(function(request, result, next) {
-  result.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
-  result.setHeader('Access-Control-Allow-Methods', 'POST');
-  result.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  result.setHeader('Access-Control-Allow-Credentials', true);
-
-  next();
-});
 
 api.post('/api/session', function(request, result) {
   switch (request.session.user)
@@ -46,7 +42,8 @@ api.post('/api/session', function(request, result) {
           name: request.session.user.name,
           date_created: request.session.user.date_created,
         },
-      });
+      }
+    );
   }
 });
 
@@ -200,7 +197,7 @@ api.post('/api/send-message', (request, result) => {
 
   return result.json({
     success: message !== null,
-    message: (!message) ? 'Failed Receiving Message' : 'Message Received',
+    message: (!message) ? 'Failed Receiving Message. Refresh your browser' : 'Message Received',
   });
 });
 
