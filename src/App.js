@@ -134,7 +134,7 @@ function App()
   return (
     <>
       <MessageBox user={user} receivedMessage={receivedMessage} setLogin={setLogin} openFileUpload={openFileUpload} />
-      <FileUploadModal open={fileUploadModal} />
+      <FileUploadModal open={fileUploadModal} setOpen={openFileUpload} />
       <ClientView users={users} />
 
       <Modal

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Box,
   Modal,
   Button,
   Typography,
+  Alert,
 }
 from '@mui/material';
 
@@ -12,8 +13,15 @@ import {
 }
 from '@mui/icons-material';
 
+import {
+  ServerURL,
+}
+from '../../services/http-service';
+
 function FileUploadModal(args)
 {
+  const fileRef = useRef(null);
+
   const [upload, setUpload] = useState({
     sending: false,
     text: 'Upload',
@@ -24,6 +32,12 @@ function FileUploadModal(args)
     content: null,
     name: null,
     size: null,
+  });
+
+  const [alert, setAlert] = useState({
+    type: 'error',
+    show: false,
+    text: null,
   });
 
   const handleUploadFile = (event) => {
@@ -39,7 +53,52 @@ function FileUploadModal(args)
   const handleSendAttachment = () => {
     setUpload({ sending: true, text: 'Sending...' });
 
-    console.log(file);
+    const request = new XMLHttpRequest();
+    const form = new FormData();
+
+    form.append('file', file.content);
+    request.open('POST', `${ServerURL}/api/upload`);
+    request.withCredentials = true;
+
+    request.onload = () => {
+      const response = JSON.parse(request.responseText);
+
+      switch (response.success)
+      {
+        case false:
+          fileRef.current.value = '';
+
+          setFile({
+            uploaded: false,
+            content: null,
+            name: null,
+            size: null,
+          });
+
+          setUpload({
+            sending: false,
+            text: 'Upload',
+          });
+
+          setAlert({
+            text: response.message,
+            type: 'error',
+            show: true,
+          });
+          break;
+
+        case true:
+          args.setOpen(false);
+          break;
+      }
+
+      setUpload({
+        sending: false,
+        text: 'Upload',
+      });
+    };
+
+    request.send(form);
   }
 
   return (
@@ -84,6 +143,7 @@ function FileUploadModal(args)
               style={{ display: 'none' }}
               onChange={handleUploadFile}
               accept='image/*'
+              ref={fileRef}
               type='file'
             />
 
@@ -100,10 +160,20 @@ function FileUploadModal(args)
             onClick={handleSendAttachment}
             disabled={!file.uploaded || upload.sending}
             variant='contained'
+            sx={{ mb: -2 }}
             fullWidth
           >
             <CloudUploadIcon sx={{ mr: 1 }} />{upload.text}
           </Button>
+
+          {alert.show && (
+            <Alert
+              severity={alert.type}
+              sx={{ mt: 3, mb: -2 }}
+            >
+              {alert.text}
+            </Alert>
+          )}
         </Box>
     </Modal>
   );

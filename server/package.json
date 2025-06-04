@@ -6,6 +6,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express-session": "^1.18.1",
+    "formidable": "^3.5.4",
     "pg": "^8.13.1"
   }
 }

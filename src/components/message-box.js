@@ -14,6 +14,7 @@ import {
 
 import {
   HttpRequest,
+  ServerURL,
 
 } from '../services/http-service';
 
@@ -47,8 +48,6 @@ function MessageBox(args)
   useEffect(() => {
     if (args.user.username) {
       HttpRequest('/api/messages', { limit }).then(response => {
-        response.data.messages.sort((a, b) => a.id - b.id);
-
         setData({
           messages: response.data.messages || [],
           count: parseInt(response.data.count),
@@ -67,6 +66,13 @@ function MessageBox(args)
 
   useEffect(() => {
     if (args.receivedMessage) {
+      if (args.receivedMessage.attachment && typeof args.receivedMessage.attachment === 'string') {
+        args.receivedMessage.attachment = {
+          stored_name: args.receivedMessage.attachment,
+          original_name: args.receivedMessage.original_name || 'attachment',
+        };
+      }
+
       setData({
         ...data,
         messages: [
@@ -188,7 +194,23 @@ function MessageBox(args)
                   wordBreak: 'break-word',
                 }}
               >
-                <Typography>{row.message}</Typography>
+                <div>
+                  {
+                    row.message ? row.message :
+                      <Box>
+                        <img
+                          src={`${ServerURL}/api/attachment?attachment=${row.attachment.stored_name}`}
+                          alt={row.original_name}
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: '180px',
+                            borderRadius: '8px',
+                            marginBottom: '-4px',
+                          }}
+                        />
+                      </Box>
+                  }
+                </div>
               </Box>
             </Box>
           </Box>
