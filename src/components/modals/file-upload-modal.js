@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Modal,
@@ -39,6 +39,33 @@ function FileUploadModal(args)
     show: false,
     text: null,
   });
+
+  useEffect(() => {
+    if (!args.open) {
+      setFile({
+        uploaded: false,
+        content: null,
+        name: null,
+        size: null,
+      });
+
+      setUpload({
+        sending: false,
+        text: 'Upload',
+      });
+
+      setAlert({
+        type: 'error',
+        show: false,
+        text: null,
+      });
+
+      if (fileRef.current) {
+        fileRef.current.value = '';
+      }
+    }
+
+  }, [args.open]);
 
   const handleUploadFile = (event) => {
     const file = event.target.files[0];
@@ -125,6 +152,27 @@ function FileUploadModal(args)
             sx={{ borderBottom: '2px solid #CCC' }}
           >
             Upload Attachment
+            <Button
+              onClick={() => args.setOpen(false)}
+              sx={{
+                position: 'absolute',
+                top: 30,
+                right: 30,
+                fontSize: '2rem',
+                color: 'red',
+                minWidth: 0,
+                padding: 0,
+                lineHeight: 1, 
+
+                '&:hover': {
+                  backgroundColor: 'transparent',
+                  color: 'red',
+                }
+              }}
+              variant='text'
+            >
+              &times;
+            </Button>
           </Typography>
 
           <Box

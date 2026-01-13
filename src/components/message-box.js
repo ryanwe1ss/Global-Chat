@@ -7,11 +7,9 @@ import {
   Alert,
 
 } from '@mui/material';
-import {
-  FileUpload as FileUploadIcon,
 
-} from '@mui/icons-material';
-
+import { FileUpload as FileUploadIcon } from '@mui/icons-material';
+import AttachmentModal from './modals/attachment-modal';
 import {
   HttpRequest,
   ServerURL,
@@ -31,6 +29,12 @@ function MessageBox(args)
   const [data, setData] = useState({
     messages: [],
     count: 0,
+  });
+
+  const [attachment, setAttachment] = useState({
+    open: false,
+    stored_name: null,
+    original_name: null,
   });
 
   const [messageAction, setMessageSendAction] = useState({
@@ -124,6 +128,16 @@ function MessageBox(args)
     });
   };
 
+  const handleAttachmentClick = async (data) => {
+    if (!data.attachment) return;
+
+    setAttachment({
+      open: true,
+      stored_name: data.attachment.stored_name,
+      original_name: data.attachment.original_name,
+    });
+  };
+
   const handleScroll = () => {
     if (messageContainerRef.current) {
       const { scrollTop } = messageContainerRef.current;
@@ -155,6 +169,7 @@ function MessageBox(args)
         boxSizing: 'border-box',
       }}
     >
+      <AttachmentModal data={attachment} setAttachment={setAttachment} />
       <Box
         ref={messageContainerRef}
         onScroll={handleScroll}
@@ -168,11 +183,11 @@ function MessageBox(args)
         {args.user.username && data.messages.length > 0 && data.messages.map((row, index) => (
           <Box key={index} sx={{ mb: 1 }}>
             <Typography 
-              sx={{ 
-                fontSize: 12, 
-                fontWeight: 'bold', 
-                color: 'gray', 
-                textAlign: row.your_message ? 'right' : 'left' 
+              sx={{
+                fontSize: 12,
+                fontWeight: 'bold',
+                color: 'gray',
+                textAlign: row.your_message ? 'right' : 'left'
               }}
             >
               {args.user.username !== row.sender.username && row.sender.username}
@@ -185,6 +200,7 @@ function MessageBox(args)
               }}
             >
               <Box
+                onClick={() => handleAttachmentClick(row)}
                 sx={{
                   maxWidth: '70%',
                   p: 2,
@@ -192,6 +208,7 @@ function MessageBox(args)
                   bgcolor: row.your_message ? '#1976d2' : '#e0e0e0',
                   color: row.your_message ? 'white' : 'black',
                   wordBreak: 'break-word',
+                  cursor: row.attachment ? 'pointer' : 'default',
                 }}
               >
                 <div>
