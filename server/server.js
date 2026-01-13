@@ -14,6 +14,13 @@ const api = express();
 const usersConnected = [];
 const maxUploadSize = 10 * 1024 * 1024; // 10 MB
 
+const allowedFileUploadTypes = [
+  'image/jpeg',
+  'image/png',
+  'image/jpg',
+  'video/mp4',
+];
+
 api.use(express.json());
 api.use(cors({
   origin: process.env.ORIGIN,
@@ -194,6 +201,7 @@ api.post('/api/messages', middleware, function(request, result) {
           message.attachment = {
             stored_name: message.attachment.stored_name,
             original_name: message.attachment.original_name,
+            mime_type: message.attachment.mime_type,
           }
           break;
       }
@@ -243,6 +251,7 @@ api.post('/api/send-message', middleware, (request, result) => {
 });
 
 api.post('/api/upload', middleware, (request, result) => {
+  let uploadRejected = false;
   let attachedFile = {};
 
   const form = new formidable.IncomingForm({
@@ -250,10 +259,21 @@ api.post('/api/upload', middleware, (request, result) => {
   });
 
   form.on('file', (field, file) => {
+    if (!allowedFileUploadTypes.includes(file.mimetype)) {
+      uploadRejected = true;
+
+      return result.status(415).send({
+        success: false,
+        message: 'Only image and video files are allowed',
+      });
+    }
+
     attachedFile = file;
   });
 
   form.on('end', async () => {
+    if (uploadRejected) return;
+
     const fileName = crypto.randomUUID() + path.extname(attachedFile.originalFilename).toLowerCase();
     const filePath = path.join(__dirname, 'attachments', fileName);
 
@@ -339,19 +359,43 @@ api.post('/api/upload', middleware, (request, result) => {
 
 api.get('/api/attachment', (request, result) => {
   const attachment = request.query.attachment || null;
+
   if (attachment) {
-
     const filePath = path.resolve(__dirname, 'attachments', attachment);
-    if (fs.existsSync(filePath)) {
 
-      result.sendFile(filePath, (error) => {
-        if (error) {
-          return result.status(500).send({
-            success: false,
-            message: 'Failed to send attachment',
-          });
-        }
-      });
+    if (fs.existsSync(filePath)) {
+      const range = request.headers.range;
+
+      if (range && filePath.endsWith('.mp4')) {
+        const stat = fs.statSync(filePath);
+        const fileSize = stat.size;
+
+        const parts = range.replace(/bytes=/, '').split('-');
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+        const chunkSize = end - start + 1;
+        const file = fs.createReadStream(filePath, { start, end });
+
+        result.writeHead(206, {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunkSize,
+          'Content-Type': 'video/mp4',
+        });
+
+        file.pipe(result);
+      }
+      else {
+        result.sendFile(filePath, (error) => {
+          if (error) {
+            return result.status(500).send({
+              success: false,
+              message: 'Failed to send attachment',
+            });
+          }
+        });
+      }
     }
   }
 });

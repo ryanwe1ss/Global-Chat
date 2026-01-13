@@ -190,7 +190,7 @@ function FileUploadModal(args)
             <input
               style={{ display: 'none' }}
               onChange={handleUploadFile}
-              accept='image/*'
+              accept='image/*, video/*'
               ref={fileRef}
               type='file'
             />

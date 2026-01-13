@@ -16,6 +16,7 @@ function AttachmentModal(args)
       open: false,
       stored_name: null,
       original_name: null,
+      mime_type: null,
     });
   };
 
@@ -37,15 +38,33 @@ function AttachmentModal(args)
             p: 4,
           }}
         >
-          <img
-            src={`${ServerURL}/api/attachment?attachment=${args.data.stored_name}`}
-            alt={args.data.original_name}
-            style={{
-              maxWidth: '80vw',
-              maxHeight: '60vh',
-              borderRadius: '8px',
-            }}
-          />
+          {
+            args.data.mime_type?.startsWith('image/') ? (
+              <img
+                src={`${ServerURL}/api/attachment?attachment=${args.data.stored_name}`}
+                alt={args.data.original_name}
+                style={{
+                  maxWidth: '80vw',
+                  maxHeight: '60vh',
+                  borderRadius: '8px',
+                }}
+              />
+            ) : args.data.mime_type?.startsWith('video/') ? (
+              <video
+                src={`${ServerURL}/api/attachment?attachment=${args.data.stored_name}`}
+                controls
+                style={{
+                  maxWidth: '80vw',
+                  maxHeight: '60vh',
+                  borderRadius: '8px',
+                }}
+              />
+            ) : (
+              <Box>
+                Unsupported attachment type.
+              </Box>
+            )
+          }
         </Box>
     </Modal>
   );

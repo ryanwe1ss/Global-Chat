@@ -35,6 +35,7 @@ function MessageBox(args)
     open: false,
     stored_name: null,
     original_name: null,
+    mime_type: null,
   });
 
   const [messageAction, setMessageSendAction] = useState({
@@ -135,6 +136,7 @@ function MessageBox(args)
       open: true,
       stored_name: data.attachment.stored_name,
       original_name: data.attachment.original_name,
+      mime_type: data.attachment.mime_type,
     });
   };
 
@@ -212,21 +214,34 @@ function MessageBox(args)
                 }}
               >
                 <div>
-                  {
-                    row.message ? row.message :
-                      <Box>
-                        <img
-                          src={`${ServerURL}/api/attachment?attachment=${row.attachment.stored_name}`}
-                          alt={row.original_name}
-                          style={{
-                            maxWidth: '100%',
-                            maxHeight: '180px',
-                            borderRadius: '8px',
-                            marginBottom: '-4px',
-                          }}
-                        />
-                      </Box>
-                  }
+                  {row.attachment?.mime_type?.startsWith('image/') ? (
+                    <Box>
+                      <img
+                        src={`${ServerURL}/api/attachment?attachment=${row.attachment.stored_name}`}
+                        alt={row.original_name}
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '180px',
+                          borderRadius: '8px',
+                          marginBottom: '-4px',
+                        }}
+                      />
+                    </Box>
+                  ) : row.attachment?.mime_type?.startsWith('video/') ? (
+                    <Box>
+                      <video
+                        src={`${ServerURL}/api/attachment?attachment=${row.attachment.stored_name}`}
+                        controls
+                        style={{
+                          maxWidth: '100%',
+                          borderRadius: '8px',
+                          marginBottom: '-4px',
+                        }}
+                      />
+                    </Box>
+                  ) : (
+                    row.message
+                  )}
                 </div>
               </Box>
             </Box>
