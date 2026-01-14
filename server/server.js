@@ -217,22 +217,50 @@ api.post('/api/messages', middleware, function(request, result) {
   });
 });
 
-api.post('/api/send-message', middleware, (request, result) => {
+api.post('/api/send-message', middleware, async (request, result) => {
   const message = request.body.message || null;
 
-  if (message) {
+  if (!message || message.length > 500) {
+    return result.status(400).send({
+      success: false,
+      message: 'Message cannot be empty or exceed 500 characters',
+    });
+  }
+
+  try {
+    const messageQueue = await database.query(`
+      SELECT 
+        date_created
+      FROM
+        messages
+      WHERE
+        sender_id = $1 AND
+        date_created >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '3 seconds'
+      ORDER BY
+        id DESC
+      LIMIT 1
+    `, [request.session.user.id]);
+
+    if (messageQueue.rows.length > 0) {
+      return result.status(429).send({
+        success: false,
+        message: 'You are sending messages too quickly.',
+      });
+    }
+
     const dateStamp = new Date().toISOString();
-    database.query(`
+    await database.query(`
       INSERT INTO messages 
       (sender_id, message, date_created)
       VALUES
       ($1, $2, $3)
-    `,
-    [
-      request.session.user.id,
-      message,
-      dateStamp,
-    ]);
+      `,
+      [
+        request.session.user.id,
+        message,
+        dateStamp,
+      ]
+    );
 
     listener.create_message({
       sender: {
@@ -242,21 +270,47 @@ api.post('/api/send-message', middleware, (request, result) => {
       date_created: dateStamp,
       message,
     });
-  }
 
-  return result.status(200).send({
-    success: message !== null,
-    message: (!message) ? 'Failed Receiving Message. Refresh your browser' : 'Message Received',
-  });
+    return result.status(200).send({
+      success: true,
+      message: 'Message Sent',
+    });
+  }
+  catch (error) {
+    return result.status(500).send({
+      success: false,
+      message: 'Server error. Please try again later',
+    });
+  }
 });
 
-api.post('/api/upload', middleware, (request, result) => {
+api.post('/api/upload', middleware, async (request, result) => {
   let uploadRejected = false;
   let attachedFile = {};
 
   const form = new formidable.IncomingForm({
     maxFileSize: maxUploadSize,
   });
+
+  const uploadQueue = await database.query(`
+    SELECT 
+      date_created
+    FROM
+      messages
+    WHERE
+      sender_id = $1 AND
+      date_created >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '5 seconds'
+    ORDER BY
+      id DESC
+    LIMIT 1
+  `, [request.session.user.id]);
+
+  if (uploadQueue.rows.length > 0) {
+    return result.status(429).send({
+      success: false,
+      message: 'You are uploading attachments too quickly.',
+    });
+  }
 
   form.on('file', (field, file) => {
     if (!allowedFileUploadTypes.includes(file.mimetype)) {
@@ -359,7 +413,7 @@ api.post('/api/upload', middleware, (request, result) => {
   });
 });
 
-api.get('/api/attachment', (request, result) => {
+api.get('/api/attachment', middleware, (request, result) => {
   const attachment = request.query.attachment || null;
 
   if (attachment) {
@@ -399,6 +453,18 @@ api.get('/api/attachment', (request, result) => {
         });
       }
     }
+    else {
+      return result.status(404).send({
+        success: false,
+        message: 'Attachment not found',
+      });
+    }
+  }
+  else {
+    return result.status(400).send({
+      success: false,
+      message: 'No attachment specified',
+    });
   }
 });
 

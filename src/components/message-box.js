@@ -182,7 +182,7 @@ function MessageBox(args)
           flex: 1,
         }}
       >
-        {args.user.username && data.messages.length > 0 && data.messages.map((row, index) => (
+        {args.user.username && data.messages.length > 0 ? data.messages.map((row, index) => (
           <Box key={index} sx={{ mb: 1 }}>
             <Typography 
               sx={{
@@ -248,7 +248,17 @@ function MessageBox(args)
               </Box>
             </Box>
           </Box>
-        ))}
+        )) : (
+          <Typography
+            sx={{
+              textAlign: 'center',
+              marginTop: '20px',
+              color: 'gray',
+            }}
+          >
+            Be the first to send a message
+          </Typography>
+        )}
 
         <div ref={messagesEndRef} />
       </Box>

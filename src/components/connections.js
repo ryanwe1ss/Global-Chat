@@ -1,4 +1,4 @@
-import RouterIcon from '@mui/icons-material/Router';
+import EyeIcon from '@mui/icons-material/Visibility';
 import {
   Box,
   Typography,
@@ -32,12 +32,8 @@ function ClientView(args)
       >
         {args.users && args.users.map((username, index) => (
           <Box key={index} sx={{ display: 'flex', gap: 0.5 }}>
-            <RouterIcon />
-            <Typography
-              sx={{ mt: 0.4 }}
-            >
-              {username}
-            </Typography>
+            <EyeIcon />
+            <Typography>{username}</Typography>
           </Box>
         ))}
       </Box>
