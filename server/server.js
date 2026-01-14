@@ -328,8 +328,10 @@ api.post('/api/upload', middleware, (request, result) => {
             attachment: {
               stored_name: fileName,
               original_name: attachedFile.originalFilename,
+              mime_type: attachedFile.mimetype,
             },
-          });
+
+          }, 'attachment');
 
           result.status(200).send({
             success: true,

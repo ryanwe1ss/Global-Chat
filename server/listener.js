@@ -7,11 +7,11 @@ const listenerApi = express();
 const httpServer = http.createServer(listenerApi);
 const clients = new Map();
 
-function create_message(body) {
+function create_message(body, type='message') {
   wss.clients.forEach(client => {
     if (client.readyState === webSocket.OPEN) {
       client.send(JSON.stringify({
-        type: 'message',
+        type,
         body,
       }));
     }

@@ -204,7 +204,7 @@ function MessageBox(args)
               <Box
                 onClick={() => handleAttachmentClick(row)}
                 sx={{
-                  maxWidth: '70%',
+                  maxWidth: '40%',
                   p: 2,
                   borderRadius: 2,
                   bgcolor: row.your_message ? '#1976d2' : '#e0e0e0',
@@ -232,10 +232,12 @@ function MessageBox(args)
                       <video
                         src={`${ServerURL}/api/attachment?attachment=${row.attachment.stored_name}`}
                         controls
+                        preload='metadata'
                         style={{
                           maxWidth: '100%',
                           borderRadius: '8px',
                           marginBottom: '-4px',
+                          pointerEvents: 'none',
                         }}
                       />
                     </Box>
@@ -269,6 +271,11 @@ function MessageBox(args)
         <TextField
           onChange={(event) => setMessage(event.target.value)}
           disabled={!messageAction.boxEnabled}
+          slotProps={{
+            htmlInput: {
+              maxLength: 500,
+            },
+          }}
           placeholder='Type a message...'
           value={message || ''}
           variant='outlined'

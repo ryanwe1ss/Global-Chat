@@ -67,6 +67,13 @@ function App()
               ...data.body,
             });
             break;
+
+          case 'attachment':
+            setReceivedMessage({
+              your_message: data.body.sender.username === user.username,
+              ...data.body,
+            });
+            break;
         }
       });
 
